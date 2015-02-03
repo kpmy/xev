@@ -6,4 +6,5 @@ BEGIN
 	Core.LoadMod("TestA2");
 	Core.LoadMod("TestMath");
 	Core.LoadMod("TestStrings");
+	Core.LoadMod("TestStrDyn");
 END Start.

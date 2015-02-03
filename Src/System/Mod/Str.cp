@@ -8,10 +8,40 @@ MODULE Str;
 		minLongIntRev = "8085774586302733229";	(* reversed string of -MIN(LONGINT) *)
 		digitspace* = 08FX;
 	
+	TYPE
+		Dyn* = POINTER TO LIMITED RECORD 
+			x: POINTER TO ARRAY OF CHAR;
+		END;
+		
 	VAR
 		maxExp: INTEGER;
 		maxDig: INTEGER;
 		factor: REAL;	(* 10^maxDig *)	
+	
+	PROCEDURE New*(): Dyn;
+		VAR d: Dyn;
+	BEGIN
+		NEW(d);
+	RETURN d
+	END New;
+	
+	PROCEDURE (d: Dyn) Add* (c: CHAR), NEW;
+		VAR i, next: INTEGER; tmp: POINTER TO ARRAY OF CHAR;
+	BEGIN
+		IF d.x = NIL THEN
+			NEW(d.x, 1); next:=0;
+		ELSE
+			next:=LEN(d.x);
+			NEW(tmp, next+1);
+			i:=0;
+			WHILE i<next DO
+				tmp[i]:=d.x[i];
+				INC(i);
+			END;
+			d.x:=tmp
+		END;
+		d.x[next]:=c
+	END Add;
 	
 	(* integer conversions *)
 

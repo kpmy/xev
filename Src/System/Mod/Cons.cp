@@ -22,8 +22,11 @@ MODULE Cons;
 	END Beep;
 	
 	PROCEDURE (log: Hook) Char (ch: CHAR);
+		VAR vs: ARRAY 2 OF CHAR;
 	BEGIN
-	
+		vs[0]:=ch;
+		vs[1]:=0X;
+		Console.String(vs)
 	END Char;
 	
 	PROCEDURE (log: Hook) Int (n: LONGINT);
