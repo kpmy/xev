@@ -31,5 +31,10 @@ MODULE Console;
 		String("\n")
 	END Ln;
 	
+	PROCEDURE Tab*;
+	BEGIN
+		String("\t")
+	END Tab;
+	
 END Console.
 

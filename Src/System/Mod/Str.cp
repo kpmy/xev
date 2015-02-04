@@ -7,7 +7,9 @@ MODULE Str;
 	CONST
 		minLongIntRev = "8085774586302733229";	(* reversed string of -MIN(LONGINT) *)
 		digitspace* = 08FX;
-	
+		charCode* = -1; decimal* = 10; hexadecimal* = -2; roman*= -3;
+		showBase* = TRUE; hideBase* = FALSE;
+		
 	TYPE
 		Dyn* = POINTER TO LIMITED RECORD 
 			x: POINTER TO ARRAY OF CHAR;
@@ -17,7 +19,9 @@ MODULE Str;
 		maxExp: INTEGER;
 		maxDig: INTEGER;
 		factor: REAL;	(* 10^maxDig *)	
-	
+		digits: ARRAY 17 OF CHAR;
+		toUpper, toLower: ARRAY 256 OF CHAR;
+		
 	PROCEDURE New*(): Dyn;
 		VAR d: Dyn;
 	BEGIN
@@ -43,6 +47,16 @@ MODULE Str;
 		d.x[next]:=c
 	END Add;
 	
+	PROCEDURE (d: Dyn) CopyOf*(): POINTER TO ARRAY OF CHAR, NEW;
+		VAR tmp, new: POINTER TO ARRAY OF CHAR;
+	BEGIN
+		tmp:=d.x;
+		d.Add(0X);
+		new:=d.x;
+		d.x:=tmp;
+	RETURN new;
+	END CopyOf;
+	
 	(* integer conversions *)
 
 	PROCEDURE IntToString* (x: LONGINT; OUT s: ARRAY OF CHAR);
@@ -59,6 +73,93 @@ MODULE Str;
 		REPEAT DEC(j); ch := a[j]; s[k] := ch; INC(k) UNTIL j = 0;
 		s[k] := 0X
 	END IntToString;
+	
+	PROCEDURE IntToStringForm* (x: LONGINT; form, minWidth: INTEGER; fillCh: CHAR;
+														showBase: BOOLEAN; OUT s: ARRAY OF CHAR);
+		VAR base, i, j, k, si: INTEGER; mSign: BOOLEAN; a: ARRAY 128 OF CHAR; c1, c5, c10: CHAR;
+	BEGIN
+		ASSERT((form = charCode) OR (form = hexadecimal) OR (form = roman) OR ((form >= 2) & (form <= 16)), 20);
+		ASSERT(minWidth >= 0, 22);
+		IF form = charCode THEN base := 16
+		ELSIF form = hexadecimal THEN base := 16
+		ELSE base := form
+		END;
+		
+		IF form = roman THEN
+			ASSERT((x > 0) & (x < 3999), 21); 
+			base := 1000; i := 0; mSign := FALSE;
+			WHILE (base > 0) & (x > 0) DO
+				IF base = 1 THEN c1 := "I"; c5 := "V"; c10 := "X"
+				ELSIF base = 10 THEN c1 := "X"; c5 := "L"; c10 := "C"
+				ELSIF base = 100 THEN c1 := "C"; c5 := "D"; c10 := "M"
+				ELSE c1 := "M"
+				END;
+				k := SHORT(x DIV base); x := x MOD base;
+				IF k IN {4, 9} THEN a[i] := c1; INC(i) END;
+				IF k IN {4 .. 8} THEN a[i] := c5; INC(i) END;
+				IF k = 9 THEN a[i] := c10; INC(i)
+				ELSIF k IN {1 .. 3, 6 .. 8} THEN
+					j := k MOD 5;
+					REPEAT a[i] := c1; INC(i); DEC(j) UNTIL j = 0
+				END;
+				base := base DIV 10
+			END
+		ELSIF (form = hexadecimal) OR (form = charCode) THEN
+			i := 0; mSign := FALSE;
+			IF showBase THEN DEC(minWidth) END;
+			REPEAT
+				a[i] := digits[x MOD base]; x := x DIV base; INC(i)
+			UNTIL (x = 0) OR (x = -1) OR (i = LEN(a));
+			IF x = -1 THEN fillCh := "F" END
+		ELSE
+			IF x < 0 THEN
+				i := 0; mSign := TRUE; DEC(minWidth);
+				REPEAT
+					IF x MOD base = 0 THEN
+						a[i] := digits[0]; x := x DIV base
+					ELSE
+						a[i] := digits[base - x MOD base]; x := x DIV base + 1
+					END;
+					INC(i)
+				UNTIL (x = 0) OR (i = LEN(a))
+			ELSE
+				i := 0; mSign := FALSE;
+				REPEAT
+					a[i] := digits[x MOD base]; x := x DIV base; INC(i)
+				UNTIL (x = 0) OR (i = LEN(a))
+			END;
+			IF showBase THEN DEC(minWidth);
+				IF base < 10 THEN DEC(minWidth) ELSE DEC(minWidth,2) END
+			END
+		END;
+		si := 0;
+		IF mSign & (fillCh = "0") & (si < LEN(s)) THEN s[si] := "-"; INC(si); mSign := FALSE END;
+		WHILE minWidth > i DO
+			IF si < LEN(s) THEN s[si] := fillCh; INC(si) END;
+			DEC(minWidth)
+		END;
+		IF mSign & (si < LEN(s)) THEN s[si] := "-"; INC(si) END;
+		IF form = roman THEN
+			j := 0;
+			WHILE j < i DO 
+				IF si < LEN(s) THEN s[si] := a[j]; INC(si) END; 
+				INC(j)
+			END
+		ELSE
+			REPEAT DEC(i);
+				IF si < LEN(s) THEN s[si] := a[i]; INC(si) END
+			UNTIL i = 0
+		END;
+		IF showBase & (form # roman) THEN
+			IF (form = charCode) & (si < LEN(s)) THEN s[si] := "X"; INC(si)
+			ELSIF (form = hexadecimal) & (si < LEN(s)) THEN s[si] := "H"; INC(si)
+			ELSIF (form < 10) & (si < LEN(s)-1) THEN s[si] := "%"; s[si+1] := digits[base]; INC(si, 2)
+			ELSIF (si < LEN(s) - 2) THEN
+				s[si] := "%"; s[si+1] := digits[base DIV 10]; s[si+2] := digits[base MOD 10]; INC(si, 3)
+			END
+		END;
+		IF si < LEN(s) THEN s[si] := 0X ELSE HALT(23) END
+	END IntToStringForm;
 	
 		(* real conversions *)
 
@@ -169,8 +270,29 @@ MODULE Str;
 		RealToStringForm(x, 16, 0, 0, digitspace, s)
 	END RealToString;
 	
+	PROCEDURE ToLower* (in: ARRAY OF CHAR; OUT out: ARRAY OF CHAR);
+		VAR i, max: INTEGER;
+	BEGIN i := 0; max := LEN(out)-1;
+		WHILE (in[i] # 0X) & (i < max) DO
+			IF ORD(in[i]) < 256 THEN out[i] := toLower[ORD(in[i])] ELSE out[i] := in[i] END;
+			INC(i)
+		END;
+		out[i] := 0X
+	END ToLower;
+	
+	PROCEDURE Init;
+		VAR i: INTEGER;
+	BEGIN
+		maxExp := SHORT(ENTIER(Mathe.Log(MAX(REAL)))) + 1;	
+		maxDig := SHORT(ENTIER(-Mathe.Log(Mathe.Eps())));
+		factor := Mathe.IntPower(10, maxDig);
+		digits := "0123456789ABCDEF"; 
+		FOR i := 0 TO 255 DO toUpper[i] :=  CHR(i); toLower[i] := CHR(i) END;
+		FOR i := ORD("A") TO ORD("Z") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
+		FOR i := ORD("À") TO ORD ("Ö") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
+		FOR i := ORD("Ø") TO ORD ("Þ") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
+	END Init;
+	
 BEGIN
-	maxExp := SHORT(ENTIER(Mathe.Log(MAX(REAL)))) + 1;	
-	maxDig := SHORT(ENTIER(-Mathe.Log(Mathe.Eps())));
-	factor := Mathe.IntPower(10, maxDig)
+	Init
 END Str.

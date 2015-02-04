@@ -13,6 +13,7 @@ MODULE TestStrDyn;
 			INC(i);
 		END;
 		Out.Ln;
+		Out.String(d.CopyOf()$); Out.Ln;
 	END Init;
 	
 BEGIN

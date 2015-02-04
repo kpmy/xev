@@ -79,7 +79,7 @@ MODULE Cons;
 	
 	PROCEDURE (log: Hook) Tab;
 	BEGIN
-	
+		Console.Tab;
 	END Tab;
 	
 	PROCEDURE (log: Hook) Ln;

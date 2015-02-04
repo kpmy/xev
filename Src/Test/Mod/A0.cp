@@ -1,6 +1,6 @@
 MODULE TestA0;
 
-	IMPORT Log:=Out, Core;
+	IMPORT Log:=Out, Core, Str;
 	
 	TYPE
 		Item = POINTER TO RECORD
@@ -36,11 +36,13 @@ MODULE TestA0;
 	END Do;
 	
 	PROCEDURE Do0;
-		VAR p: Item;
+		VAR p: Item; vs: ARRAY 15 OF CHAR;
 	BEGIN
 		IF p#NIL THEN
 			p.next:=NIL (* NIL trap here? *)
 		END;
+		Str.IntToStringForm(505, Str.hexadecimal, 4, '0', Str.hideBase, vs);
+		Log.String("IntToStringForm "); Log.String(vs); Log.Ln;
 	END Do0;
 	
 	PROCEDURE Do1;
