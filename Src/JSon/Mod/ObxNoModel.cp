@@ -20,14 +20,14 @@ MODULE JSonObxNoModel;
 		Out;
 	
 	TYPE
-		Writer = POINTER TO RECORD (Gen.Writer) END; (* дефолтный вывод - в лог *)
+		Wr = POINTER TO RECORD (Gen.Writer) END; (* дефолтный вывод - в лог *)
 		
-	PROCEDURE (w: Writer) Char (c: CHAR);
+	PROCEDURE (w: Wr) Char (c: CHAR);
 	BEGIN
 		Out.Char(c);
 	END Char;
 	
-	PROCEDURE (w: Writer) Whitespace (s: ARRAY OF CHAR);
+	PROCEDURE (w: Wr) Whitespace (s: ARRAY OF CHAR);
 	BEGIN
 		CASE s[0] OF
 		09X: Out.Tab;
@@ -39,7 +39,7 @@ MODULE JSonObxNoModel;
 	(* формирование структуры JSON непосредственно при выполнении комманд форматтера *)
 	PROCEDURE Do*;
 		TYPE Base = POINTER TO RECORD END;
-		VAR b: Base; wr: Writer; f: F.Formatter; res: INTEGER;
+		VAR b: Base; wr: Wr; f: F.Formatter; res: INTEGER;
 	BEGIN
 		Out.Ln;
 		NEW(wr); 
