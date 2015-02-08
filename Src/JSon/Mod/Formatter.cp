@@ -379,7 +379,6 @@ MODULE JSonFormatter;
 		res:=0;
 
 		IF f.this#NIL THEN expect:=f.this.expect ELSE expect:={objBegin, arrBegin} END;
-		Out.Int(sym); Out.Set(expect); Out.Ln;
 		IF (sym IN expect) THEN
 
 			CASE sym OF
