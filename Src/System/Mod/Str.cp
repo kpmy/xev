@@ -29,6 +29,28 @@ MODULE Str;
 	RETURN d
 	END New;
 	
+	PROCEDURE NewFrom*(IN s: ARRAY OF CHAR): Dyn;
+		VAR d: Dyn; tmp: POINTER TO ARRAY OF CHAR; len: INTEGER;
+	BEGIN
+		NEW(d);
+		len:=LEN(s$)+1;
+		NEW(tmp, len);
+		tmp^:=s$;
+		d.x:=tmp;
+	RETURN d
+	END NewFrom;
+	
+	PROCEDURE (d: Dyn) Len*(): INTEGER, NEW;
+		VAR len: INTEGER;
+	BEGIN
+		IF d.x = NIL THEN
+			len:=0
+		ELSE
+			len:=LEN(d.x)
+		END;
+	RETURN len
+	END Len;
+	
 	PROCEDURE (d: Dyn) Add* (c: CHAR), NEW;
 		VAR i, next: INTEGER; tmp: POINTER TO ARRAY OF CHAR;
 	BEGIN
@@ -47,6 +69,12 @@ MODULE Str;
 		d.x[next]:=c
 	END Add;
 	
+	PROCEDURE (d: Dyn) Char*(idx: INTEGER): CHAR, NEW;
+	BEGIN
+		ASSERT(d.Len()>idx, 20);
+	RETURN d.x[idx]
+	END Char;
+	
 	PROCEDURE (d: Dyn) CopyOf*(): POINTER TO ARRAY OF CHAR, NEW;
 		VAR tmp, new: POINTER TO ARRAY OF CHAR;
 	BEGIN
@@ -56,6 +84,7 @@ MODULE Str;
 		d.x:=tmp;
 	RETURN new;
 	END CopyOf;
+	
 	
 	(* integer conversions *)
 
@@ -160,6 +189,86 @@ MODULE Str;
 		END;
 		IF si < LEN(s) THEN s[si] := 0X ELSE HALT(23) END
 	END IntToStringForm;
+	
+	PROCEDURE StringToInt* (IN s: ARRAY OF CHAR; OUT x: INTEGER; OUT res: INTEGER);
+		CONST hexLimit = MAX(INTEGER) DIV 8 + 1;
+		VAR i, j, k, digits: INTEGER; ch, top: CHAR; neg: BOOLEAN; base: INTEGER;
+	BEGIN
+		res := 0; i := 0; ch := s[0];
+		WHILE (ch # 0X) & (ch <= " ") OR (ch = 8BX) OR (ch = 8FX) OR (ch = 0A0X) DO	(* ignore leading blanks *)
+			INC(i); ch := s[i]
+		END;
+		j := i; top := "0";
+		WHILE (ch # 0X) & (ch # "H") & (ch # "X") & (ch # "%") DO 
+			IF ch > top THEN top := ch END;
+			INC(j); ch := s[j]
+		END;
+		IF (ch = "H") OR (ch = "X") THEN
+			x := 0; ch := s[i];
+			IF ("0" <= ch) & (ch <= "9") OR ("A" <= ch) & (ch <= "F") THEN
+				WHILE ch = "0" DO INC(i); ch := s[i] END;
+				digits := 0;
+				WHILE (res = 0) & (("0" <= ch) & (ch <= "9") OR ("A" <= ch) & (ch <= "F")) DO
+					IF ch < "A" THEN k := ORD(ch) - ORD("0")
+					ELSE k := ORD(ch) - ORD("A") + 10
+					END;
+					IF digits < 8 THEN
+						x := x MOD hexLimit;
+						IF x >= hexLimit DIV 2 THEN x := x - hexLimit END;
+						x := x * 16 + k; INC(i); ch := s[i]
+					ELSE res := 1
+					END;
+					INC(digits)
+				END;
+				IF res = 0 THEN
+					IF (ch # "H") & (ch # "X") OR (s[i+1] # 0X) THEN res := 2 END
+				END
+			ELSE res := 2
+			END
+		ELSE
+			IF ch = "%" THEN
+				INC(j); ch := s[j]; base := 0;
+				IF ("0" <= ch) & (ch <= "9") THEN
+					k := ORD(ch) - ORD("0");
+					REPEAT
+						base := base * 10 + k;
+						INC(j); ch := s[j]; k := ORD(ch) - ORD("0")
+					UNTIL (ch < "0") OR (ch > "9") OR (base > (MAX(INTEGER) - k) DIV 10);
+					IF ("0" <= ch) & (ch <= "9") THEN base := 0 END
+				END
+			ELSE
+				base := 10
+			END;
+			
+			IF (base < 2) OR (base > 16) THEN
+				res := 2
+			ELSIF (base <= 10) & (ORD(top) < base + ORD("0"))
+			OR (base > 10) & (ORD(top) < base - 10 + ORD("A")) THEN
+				x := 0; ch := s[i]; neg := FALSE;
+				IF ch = "-" THEN INC(i); ch := s[i]; neg := TRUE ELSIF ch = "+" THEN INC(i); ch := s[i] END;
+				WHILE (ch # 0X) & (ch <= " ") DO INC(i); ch := s[i] END; 
+				IF ("0" <= ch) & (ch <= "9") OR ("A" <= ch) & (ch <= "F") THEN
+					IF ch <= "9" THEN k := ORD(ch) - ORD("0") ELSE k := ORD(ch) - ORD("A") + 10 END;
+					WHILE (("0" <= ch) & (ch <= "9") OR ("A" <= ch) & (ch <= "F")) & (res = 0) DO
+						IF x >= (MIN(INTEGER) + (base - 1) + k) DIV base THEN
+							x := x * base - k; INC(i); ch := s[i];
+							IF ch <= "9" THEN k := ORD(ch) - ORD("0") ELSE k := ORD(ch) - ORD("A") + 10 END
+						ELSE res := 1
+						END
+					END
+				ELSE res := 2
+				END;
+				IF res = 0 THEN
+					IF ~neg THEN
+						IF x > MIN(INTEGER) THEN x := -x ELSE res := 1 END
+					END;
+					IF (ch # 0X) & (ch # "%") THEN res := 2 END
+				END
+			ELSE
+				res := 2
+			END
+		END
+	END StringToInt;
 	
 		(* real conversions *)
 
@@ -269,7 +378,87 @@ MODULE Str;
 	BEGIN
 		RealToStringForm(x, 16, 0, 0, digitspace, s)
 	END RealToString;
+
+	PROCEDURE StringToReal* (IN s: ARRAY OF CHAR; OUT x: REAL; OUT res: INTEGER);
+		VAR first, last, point, e, n, i, exp: INTEGER; y: REAL; ch: CHAR; neg, negExp, dig: BOOLEAN;
+	BEGIN
+		res := 0; i := 0; ch := s[0]; dig := FALSE;
+		WHILE (ch # 0X) & (ch <= " ") OR (ch = 8BX) OR (ch = 8FX) OR (ch = 0A0X) DO INC(i); ch := s[i] END;
+		IF ch = "+" THEN
+			neg := FALSE; INC(i); ch := s[i]
+		ELSIF ch = "-" THEN
+			neg := TRUE; INC(i); ch := s[i]
+		ELSE
+			neg := FALSE
+		END;
+		WHILE ch = "0" DO INC(i); ch := s[i]; dig := TRUE END;
+		first := i; e := 0;
+		WHILE ("0" <= ch) & (ch <= "9") DO INC(i); ch := s[i]; INC(e); dig := TRUE END;
+		point := i;
+		IF ch = "." THEN
+			INC(i); ch := s[i];
+			IF e = 0 THEN
+				WHILE ch = "0" DO INC(i); ch := s[i]; DEC(e); dig := TRUE END;
+				first := i
+			END;
+			WHILE ("0" <= ch) & (ch <= "9") DO INC(i); ch := s[i]; dig := TRUE END
+		END;
+		last := i - 1; exp := 0;
+		IF (ch = "E") OR (ch = "D") THEN
+			INC(i); ch := s[i]; negExp := FALSE;
+			IF ch = "-" THEN negExp := TRUE; INC(i); ch := s[i]
+			ELSIF ch = "+" THEN INC(i); ch := s[i]
+			END;
+			WHILE ("0" <= ch) & (ch <= "9") & (exp < 1000) DO
+				exp := exp * 10 + (ORD(ch) - ORD("0"));
+				INC(i); ch := s[i]
+			END;
+			IF negExp THEN exp := -exp END
+		END;
+		exp := exp + e; x := 0; y := 0; n := 0; 
+		WHILE (n < maxDig) & (first <= last) DO
+			IF first # point THEN x := x * 10 + (ORD(s[first]) - ORD("0")); INC(n) END;
+			INC(first)
+		END;
+		WHILE last >= first DO
+			IF last # point THEN y := (y + (ORD(s[last]) - ORD("0"))) / 10 END;
+			DEC(last)
+		END;
+		IF ~dig OR (ch # 0X) THEN res := 2	(* syntax error *)
+		ELSIF exp < -maxExp - maxDig THEN
+			x := 0.0
+		ELSIF exp < -maxExp + maxDig THEN
+			x := (x + y) / Mathe.IntPower(10, n - exp - 2 * maxDig) / factor / factor
+		ELSIF exp < n THEN
+			x := (x + y) / Mathe.IntPower(10, n - exp)
+		ELSIF exp < maxExp THEN
+			x := (x + y) * Mathe.IntPower(10, exp - n)
+		ELSIF exp = maxExp THEN
+			x := (x + y) * (Mathe.IntPower(10, exp - n) / 16);
+			IF x <= MAX(REAL) / 16 THEN x := x * 16
+			ELSE res := 1	(* overflow *)
+			END
+		ELSE res := 1	(* overflow *)
+		END;
+		IF neg THEN x := -x END
+	END StringToReal;
 	
+	PROCEDURE Find* (IN s: ARRAY OF CHAR; IN pat: ARRAY OF CHAR; start: INTEGER; OUT pos: INTEGER);
+		VAR j: INTEGER;
+	BEGIN
+		ASSERT(start >= 0, 20);
+		IF (start = 0) OR (start <= LEN(s$) - LEN(pat$)) THEN
+			(* start = 0 is optimization: need not call Len *)
+			pos := start;
+			WHILE s[pos] # 0X DO j := 0;
+				WHILE (s[pos+j] = pat[j]) & (pat[j] # 0X) DO INC(j) END;
+				IF pat[j] = 0X THEN RETURN END;
+				INC(pos)
+			END
+		END;
+		pos := -1	(* pattern not found *)
+	END Find;
+		
 	PROCEDURE ToLower* (in: ARRAY OF CHAR; OUT out: ARRAY OF CHAR);
 		VAR i, max: INTEGER;
 	BEGIN i := 0; max := LEN(out)-1;
