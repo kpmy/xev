@@ -394,6 +394,7 @@ MODULE JSonParser;
 			|nameSep:
 				IF p.sc.this.buf.Len()>0 THEN 
 					x:=p.sc.this.buf.x.CopyOf();
+					ASSERT(x$#'', 40);
 					p.t.NextName(x$)
 				END;
 				p.sc.ClearBuffer;

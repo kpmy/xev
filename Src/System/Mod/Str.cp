@@ -30,13 +30,17 @@ MODULE Str;
 	END New;
 	
 	PROCEDURE NewFrom*(IN s: ARRAY OF CHAR): Dyn;
-		VAR d: Dyn; tmp: POINTER TO ARRAY OF CHAR; len: INTEGER;
+		VAR d: Dyn; tmp: POINTER TO ARRAY OF CHAR; i, len: INTEGER;
 	BEGIN
 		NEW(d);
-		len:=LEN(s$)+1;
-		NEW(tmp, len);
-		tmp^:=s$;
-		d.x:=tmp;
+		IF LEN(s$)>0 THEN
+			len:=LEN(s$);
+			NEW(tmp, len);
+			FOR i:=0 TO len-1 DO
+				tmp[i]:=s[i]
+			END;
+			d.x:=tmp;
+		END;
 	RETURN d
 	END NewFrom;
 	
