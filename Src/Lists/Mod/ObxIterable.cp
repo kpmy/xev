@@ -23,7 +23,7 @@ MODULE ListsObxIterable;
 	VAR i: INTEGER; item: StdItem; it: It.Iterator;
 	BEGIN
 		it := It.NewIterator();
-		FOR i := 0 TO 999 DO
+		FOR i := 0 TO 99 DO
 			NEW(item); item.i := i; it.Add(item)
 		END;
 		it.First;

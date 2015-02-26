@@ -21,11 +21,11 @@ MODULE ListsObxLinear;
 	PROCEDURE Test*;
 	VAR i : INTEGER; item : StdItem; list : Linear.List;
 	BEGIN
-		list:=Linear.NewList(); list.SetLength(1000);
-		FOR i:=0 TO 999 DO
-			NEW(item); item.i:=1000-i; list.SetItem(i, item);
+		list:=Linear.NewList(); list.SetLength(100);
+		FOR i:=0 TO 99 DO
+			NEW(item); item.i:=100-i; list.SetItem(i, item);
 		END;
-		FOR i:=0 TO 999 DO
+		FOR i:=0 TO 99 DO
 			item:=list.GetItem(i)(StdItem); Log.Int(item.i);
 		END;	
 	END Test;
