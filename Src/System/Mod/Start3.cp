@@ -1,10 +1,8 @@
 MODULE Start3;
 	
-	IMPORT Cons, Core, JSonObxNoModel, ListsObxLinear, ListsObxMap;
+	IMPORT Cons, Core, JSonObxNoModel;
 
 BEGIN
 	JSonObxNoModel.Do;
 	JSonObxNoModel.Do2;
-	ListsObxLinear.Test;
-	ListsObxMap.Test;
 END Start3.

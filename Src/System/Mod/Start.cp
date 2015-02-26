@@ -7,5 +7,4 @@ BEGIN
 	Core.LoadMod("TestMath");
 	Core.LoadMod("TestStrings");
 	Core.LoadMod("TestStrDyn");
-	Core.LoadMod("Start3");
 END Start.
